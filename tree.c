@@ -15,6 +15,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include "index.h"
+#include "pes.h"
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -139,42 +141,38 @@ int tree_from_index(ObjectID *id_out) {
         return -1;
     }
 
-    size_t buf_size = index.count * 128;
-    char *buf = malloc(buf_size);
-    if (!buf) return -1;
-
-    size_t offset = 0;
+    Tree tree;
+    tree.count = 0;
 
     for (int i = 0; i < index.count; i++) {
+        TreeEntry *entry = &tree.entries[tree.count];
 
-        char hex[65];
-        for (int j = 0; j < 32; j++)
-            sprintf(hex + j*2, "%02x", index.entries[i].oid.hash[j]);
-        hex[64] = '\0';
+        entry->mode = index.entries[i].mode;
 
-        char line[512];
+        const char *name = strrchr(index.entries[i].path, '/');
+        if (name) name++;
+        else name = index.entries[i].path;
 
-        snprintf(line, sizeof(line), "%o blob %s %s\n",
-                 index.entries[i].mode,
-                 hex,
-                 index.entries[i].path);
+        strncpy(entry->name, name, sizeof(entry->name) - 1);
+        entry->name[sizeof(entry->name) - 1] = '\0';
 
-        size_t len = strlen(line);
+        entry->hash = index.entries[i].hash;
 
-        if (offset + len >= buf_size) {
-            buf_size *= 2;
-            buf = realloc(buf, buf_size);
-        }
-
-        memcpy(buf + offset, line, len);
-        offset += len;
+        tree.count++;
     }
 
-    if (object_write(OBJ_TREE, buf, offset, out) != 0) {
-        free(buf);
+    void *data;
+    size_t len;
+
+    if (tree_serialize(&tree, &data, &len) != 0) {
         return -1;
     }
 
-    free(buf);
+    if (object_write(OBJ_TREE, data, len, id_out) != 0) {
+        free(data);
+        return -1;
+    }
+
+    free(data);
     return 0;
 }
