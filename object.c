@@ -111,6 +111,15 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     memcpy(full, header, header_len);
     full[header_len] = '\0';
     memcpy(full + header_len + 1, data, len);
+
+    unsigned char hash[32];
+    SHA256(full, total_size, hash);
+
+    char hex[65];
+    for (int i = 0; i < 32; i++)
+        sprintf(hex + i*2, "%02x", hash[i]);
+    hex[64] = '\0';
+
     return 0;
 }
 
