@@ -177,8 +177,38 @@ int index_load(Index *index) {
 //   - rename                           : atomically moving the temp file over the old index
 //
 // Returns 0 on success, -1 on error.
-int index_save(const Index *index) {
+static int cmp_index(const void *a, const void *b) {
+    return strcmp(((IndexEntry *)a)->path, ((IndexEntry *)b)->path);
+}
 
+int index_save(const Index *index) {
+    char tmp[] = ".pes/index.tmp";
+
+    FILE *f = fopen(tmp, "w");
+    if (!f) return -1;
+
+    Index sorted = *index;
+    qsort(sorted.entries, sorted.count, sizeof(IndexEntry), cmp_index);
+
+    for (int i = 0; i < sorted.count; i++) {
+        const IndexEntry *e = &sorted.entries[i];
+
+        char hex[65];
+        hash_to_hex(&e->hash, hex);
+
+        fprintf(f, "%o %s %ld %ld %s\n",
+                e->mode,
+                hex,
+                e->mtime_sec,
+                e->size,
+                e->path);
+    }
+
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
+
+    return rename(tmp, ".pes/index");
     return 0;
 }
 
