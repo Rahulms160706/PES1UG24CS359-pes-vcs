@@ -139,12 +139,27 @@ int tree_from_index(ObjectID *id_out) {
         return -1;
     }
 
-    // estimate buffer
     size_t buf_size = index.count * 128;
     char *buf = malloc(buf_size);
     if (!buf) return -1;
 
     size_t offset = 0;
+
+    for (int i = 0; i < index.count; i++) {
+
+        char hex[65];
+        for (int j = 0; j < 32; j++)
+            sprintf(hex + j*2, "%02x", index.entries[i].oid.hash[j]);
+        hex[64] = '\0';
+
+        char line[512];
+
+        snprintf(line, sizeof(line), "%o blob %s %s\n",
+                 index.entries[i].mode,
+                 hex,
+                 index.entries[i].path);
+
+        size_t len = strlen(line);
 
     return 0;
 }
