@@ -130,5 +130,21 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //
 // Returns 0 on success, -1 on error.
 int tree_from_index(ObjectID *id_out) {
+    Index index;
+    if (index_load(&index) != 0) {
+        return -1;
+    }
+
+    if (index.count == 0) {
+        return -1;
+    }
+
+    // estimate buffer
+    size_t buf_size = index.count * 128;
+    char *buf = malloc(buf_size);
+    if (!buf) return -1;
+
+    size_t offset = 0;
+
     return 0;
 }
