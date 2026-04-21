@@ -161,5 +161,14 @@ int tree_from_index(ObjectID *id_out) {
 
         size_t len = strlen(line);
 
+        if (offset + len >= buf_size) {
+            buf_size *= 2;
+            buf = realloc(buf, buf_size);
+        }
+
+        memcpy(buf + offset, line, len);
+        offset += len;
+    }
+
     return 0;
 }
