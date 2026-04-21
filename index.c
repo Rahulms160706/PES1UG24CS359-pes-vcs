@@ -209,7 +209,6 @@ int index_save(const Index *index) {
     fclose(f);
 
     return rename(tmp, ".pes/index");
-    return 0;
 }
 
 // Stage a file for the next commit.
@@ -243,5 +242,22 @@ int index_add(Index *index, const char *path) {
 
     free(data);
 
-    return 0;
+    IndexEntry *existing = index_find(index, path);
+
+    IndexEntry *e;
+    if (existing) {
+        e = existing;
+    } else {
+        e = &index->entries[index->count++];
+    }
+
+    strncpy(e->path, path, sizeof(e->path) - 1);
+    e->path[sizeof(e->path) - 1] = '\0';
+
+    e->mode = get_file_mode(path);
+    e->mtime_sec = st.st_mtime;
+    e->size = st.st_size;
+    e->hash = oid;
+
+    return index_save(index);
 }
