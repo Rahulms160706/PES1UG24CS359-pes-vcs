@@ -222,6 +222,26 @@ int index_save(const Index *index) {
 //
 // Returns 0 on success, -1 on error.
 int index_add(Index *index, const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        perror("stat failed");
+        return -1;
+    }
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    void *data = malloc(st.st_size);
+    fread(data, 1, st.st_size, f);
+    fclose(f);
+
+    ObjectID oid;
+    if (object_write(OBJ_BLOB, data, st.st_size, &oid) != 0) {
+        free(data);
+        return -1;
+    }
+
+    free(data);
 
     return 0;
 }
