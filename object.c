@@ -128,7 +128,7 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     sprintf(subdir_path, ".pes/objects/%s", dir);
 
     char path[256];
-    sprintf(path, "%s/%s", subdir_path, hex + 2);
+    snprintf(path, sizeof(path), "%s/%s", subdir_path, hex + 2);
 
     mkdir(".pes", 0755);
     mkdir(".pes/objects", 0755);
@@ -141,7 +141,7 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     }
 
     char tmp[300];
-    sprintf(tmp, "%s.tmp", path);
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
 
     FILE *f = fopen(tmp, "wb");
     if (!f) {
@@ -209,7 +209,10 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
 
-    fread(buf, 1, size, f);
+    if (fread(buf, 1, size, f) != size) {
+        free(buf);
+        return -1;
+    }
     fclose(f);
 
     unsigned char check[32];
