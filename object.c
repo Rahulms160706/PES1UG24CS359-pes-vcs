@@ -120,6 +120,48 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         sprintf(hex + i*2, "%02x", hash[i]);
     hex[64] = '\0';
 
+    char dir[3];
+    strncpy(dir, hex, 2);
+    dir[2] = '\0';
+
+    char subdir_path[256];
+    sprintf(subdir_path, ".pes/objects/%s", dir);
+
+    char path[256];
+    sprintf(path, "%s/%s", subdir_path, hex + 2);
+
+    mkdir(".pes", 0755);
+    mkdir(".pes/objects", 0755);
+    mkdir(subdir_path, 0755);
+
+    if (access(path, F_OK) == 0) {
+        memcpy(id_out->hash, hash, 32);
+        free(full);
+        return 0;
+    }
+
+    char tmp[300];
+    sprintf(tmp, "%s.tmp", path);
+
+    FILE *f = fopen(tmp, "wb");
+    if (!f) {
+        free(full);
+        return -1;
+    }
+
+    fwrite(full, 1, total_size, f);
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
+
+    if (rename(tmp, path) != 0) {
+        free(full);
+        return -1;
+    }
+
+    memcpy(id_out->hash, hash, 32);
+
+    free(full);
     return 0;
 }
 
