@@ -188,5 +188,64 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 // The caller is responsible for calling free(*data_out).
 // Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
+    char hex[65];
+    for (int i = 0; i < 32; i++)
+        sprintf(hex + i*2, "%02x", id->hash[i]);
+    hex[64] = '\0';
+
+    char path[256];
+    sprintf(path, ".pes/objects/%c%c/%s", hex[0], hex[1], hex + 2);
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    fseek(f, 0, SEEK_END);
+    size_t size = ftell(f);
+    rewind(f);
+
+    unsigned char *buf = malloc(size);
+    if (!buf) {
+        fclose(f);
+        return -1;
+    }
+
+    fread(buf, 1, size, f);
+    fclose(f);
+
+    unsigned char check[32];
+    SHA256(buf, size, check);
+
+    if (memcmp(check, id->hash, 32) != 0) {
+        free(buf);
+        return -1;
+    }
+
+    unsigned char *data = memchr(buf, '\0', size);
+    if (!data) {
+        free(buf);
+        return -1;
+    }
+
+    data++;
+    size_t data_len = size - (data - buf);
+
+    if (strncmp((char *)buf, "blob", 4) == 0)
+        *type_out = OBJ_BLOB;
+    else if (strncmp((char *)buf, "tree", 4) == 0)
+        *type_out = OBJ_TREE;
+    else if (strncmp((char *)buf, "commit", 6) == 0)
+        *type_out = OBJ_COMMIT;
+    else {
+        free(buf);
+        return -1;
+    }
+
+    void *out = malloc(data_len);
+    memcpy(out, data, data_len);
+
+    *data_out = out;
+    *len_out = data_len;
+
+    free(buf);
     return 0;
 }
