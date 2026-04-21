@@ -170,5 +170,11 @@ int tree_from_index(ObjectID *id_out) {
         offset += len;
     }
 
+    if (object_write(OBJ_TREE, buf, offset, out) != 0) {
+        free(buf);
+        return -1;
+    }
+
+    free(buf);
     return 0;
 }
