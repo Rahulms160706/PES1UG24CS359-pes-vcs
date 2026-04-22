@@ -193,14 +193,16 @@ int head_update(const ObjectID *new_commit) {
 //   - head_update       : moves the branch pointer to your new commit
 //
 // Returns 0 on success, -1 on error.
-int commit_create(const char *message, ObjectID *commit_id_out)
-    Index index;
-    if (index_load(&index) != 0) {
+int commit_create(const char *message, ObjectID *commit_id_out) {
+    Index *index = malloc(sizeof(Index));
+    if (!index) return -1;
+
+    if (index_load(index) != 0) {
         fprintf(stderr, "error: failed to load index\n");
         return -1;
     }
 
-    if (index.count == 0) {
+    if (index->count == 0) {
         fprintf(stderr, "error: nothing to commit\n");
         return -1;
     }
@@ -211,33 +213,42 @@ int commit_create(const char *message, ObjectID *commit_id_out)
         return -1;
     }
 
-    char buffer[1024];
+    Commit c;
+    memset(&c, 0, sizeof(Commit));
 
-    int len = snprintf(buffer, sizeof(buffer),
-                       "tree %02x",
-                       tree_id.hash[0]);
+    c.tree = tree_id;
 
-    char tree_hex[65];
-    hash_to_hex(&tree_id, tree_hex);
+    if (head_read(&c.parent) == 0) {
+        c.has_parent = 1;
+    } else {
+        c.has_parent = 0;
+    }
 
-    len = snprintf(buffer, sizeof(buffer),
-                   "tree %s\n\n%s\n",
-                   tree_hex,
-                   message);
+    const char *author = pes_author();
+    if (!author) author = "default";
+    
+    snprintf(c.author, sizeof(c.author), "%s", author);
+    c.timestamp = (uint64_t)time(NULL);
 
-    if (object_write(OBJ_COMMIT, buffer, len, out) != 0) {
-        fprintf(stderr, "error: failed to write commit object\n");
+    snprintf(c.message, sizeof(c.message), "%s", message);
+
+    void *data;
+    size_t len;
+
+    if (commit_serialize(&c, &data, &len) != 0) {
         return -1;
     }
 
-    FILE *f = fopen(".pes/HEAD", "w");
-    if (!f) return -1;
+    if (object_write(OBJ_COMMIT, data, len, commit_id_out) != 0) {
+        free(data);
+        return -1;
+    }
 
-    char commit_hex[65];
-    hash_to_hex(out, commit_hex);
+    free(data);
 
-    fprintf(f, "%s\n", commit_hex);
-    fclose(f);
+    if (head_update(commit_id_out) != 0) {
+        return -1;
+    }
 
     return 0;
 }
