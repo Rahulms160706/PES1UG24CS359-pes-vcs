@@ -225,6 +225,19 @@ int commit_create(const char *message, ObjectID *commit_id_out)
                    tree_hex,
                    message);
 
+    if (object_write(OBJ_COMMIT, buffer, len, out) != 0) {
+        fprintf(stderr, "error: failed to write commit object\n");
+        return -1;
+    }
 
-    return -1;
+    FILE *f = fopen(".pes/HEAD", "w");
+    if (!f) return -1;
+
+    char commit_hex[65];
+    hash_to_hex(out, commit_hex);
+
+    fprintf(f, "%s\n", commit_hex);
+    fclose(f);
+
+    return 0;
 }
