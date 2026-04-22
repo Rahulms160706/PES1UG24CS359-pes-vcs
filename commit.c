@@ -217,5 +217,14 @@ int commit_create(const char *message, ObjectID *commit_id_out)
                        "tree %02x",
                        tree_id.hash[0]);
 
+    char tree_hex[65];
+    hash_to_hex(&tree_id, tree_hex);
+
+    len = snprintf(buffer, sizeof(buffer),
+                   "tree %s\n\n%s\n",
+                   tree_hex,
+                   message);
+
+
     return -1;
 }
