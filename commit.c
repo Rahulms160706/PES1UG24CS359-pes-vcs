@@ -204,5 +204,18 @@ int commit_create(const char *message, ObjectID *commit_id_out)
         fprintf(stderr, "error: nothing to commit\n");
         return -1;
     }
+    
+    ObjectID tree_id;
+    if (tree_from_index(&tree_id) != 0) {
+        fprintf(stderr, "error: failed to create tree\n");
+        return -1;
+    }
+
+    char buffer[1024];
+
+    int len = snprintf(buffer, sizeof(buffer),
+                       "tree %02x",
+                       tree_id.hash[0]);
+
     return -1;
 }
